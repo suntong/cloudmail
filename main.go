@@ -122,8 +122,6 @@ func (ui *UI) fetch(im *imap.IMAP, mailbox string) {
 	ch, err := im.FetchAsync(query, []string{"RFC822"})
 	check(err)
 
-	envelopeDate := time.Now().Format(time.ANSIC)
-
 	i := 0
 	total := examine.Exists
 	ui.progress(i, total, "fetching messages", i, total)
@@ -132,7 +130,7 @@ L:
 		r := <-ch
 		switch r := r.(type) {
 		case *imap.ResponseFetch:
-			mbox.writeMessage("imapsync@none", envelopeDate, r.Rfc822)
+			mbox.writeMessage(r.Rfc822)
 			i++
 			ui.progress(i, total, "fetching messages")
 		case *imap.ResponseStatus:
