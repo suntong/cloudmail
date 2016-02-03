@@ -5,10 +5,10 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"github.com/suntong/go-imap"
 	"io"
 	"log"
 	"os"
-	"github.com/suntong/go-imap"
 	"time"
 )
 

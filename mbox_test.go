@@ -28,27 +28,27 @@ func (f *fromEncodingTest) Run(t *testing.T) {
 func TestFromEncoding(t *testing.T) {
 	tests := []fromEncodingTest{
 		fromEncodingTest{
-			input: "foo bar",
+			input:    "foo bar",
 			expected: "foo bar",
 		},
 		fromEncodingTest{
-			input: "foo\nbar",
+			input:    "foo\nbar",
 			expected: "foo\nbar",
 		},
 		fromEncodingTest{
-			input: "foo\nFrom bar\n",
+			input:    "foo\nFrom bar\n",
 			expected: "foo\n>From bar\n",
 		},
 		fromEncodingTest{
-			input: "From bar\n",
+			input:    "From bar\n",
 			expected: ">From bar\n",
 		},
 		fromEncodingTest{
-			input: ">From bar\n",
+			input:    ">From bar\n",
 			expected: ">>From bar\n",
 		},
 		fromEncodingTest{
-			input: "Foo\n> From bar\n> >From baz",
+			input:    "Foo\n> From bar\n> >From baz",
 			expected: "Foo\n> From bar\n> >From baz",
 		},
 	}
