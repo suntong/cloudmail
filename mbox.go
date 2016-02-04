@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"time"
 )
 
 ////////////////////////////////////////////////////////////////////////////
@@ -24,18 +25,42 @@ func newMbox(w io.Writer) *mbox {
 
 func (m *mbox) writeMessage(rfc822 []byte) error {
 
-	r := regexp.MustCompile(`\nDate: (.*)\r*\n`).FindSubmatch(rfc822)
-  //fmt.Printf("%+v\n", r)
-	envelopeDate := string(r[1])
+	r := regexp.MustCompile(`\nDate: +(.*?)\r*\n`).FindSubmatch(rfc822)
+	r1 := regexp.MustCompile(` \([A-Z]{3}[0-9:+-]*\)$`).ReplaceAll(r[1], []byte(""))
+	//r1 = regexp.MustCompile(` {2,}`).ReplaceAll(r1, []byte(" "))
 
-	_, err := m.Write([]byte(fmt.Sprintf("From %s %s\r\n", envelopeFrom, envelopeDate)))
+	sendDate := string(r1)
+	fmt.Printf("\nsendDate: %+v\n", sendDate)
+	// Standard RFC1123(Z)
+	t, err := time.Parse(time.RFC1123, sendDate)
+	if err != nil {
+		t, err = time.Parse(time.RFC1123Z, sendDate)
+	}
+	// Go time.Parse is too strict
+	// https://groups.google.com/d/msg/golang-nuts/1iLoXTx3qxU/z4VolJPKGQAJ
+	// Deal with RFC1123(Z) without leading zero or space
+	if err != nil {
+		t, err = time.Parse("Mon, 2 Jan 2006 15:04:05 MST", sendDate)
+	}
+	if err != nil {
+		t, err = time.Parse("Mon, 2 Jan 2006 15:04:05 -0700", sendDate)
+	}
+
+	envelopeDate := ""
+	if err == nil {
+		envelopeDate = t.Format(time.ANSIC)
+	} else {
+		envelopeDate = time.Now().Format(time.ANSIC)
+	}
+
+	_, err = m.Write([]byte(fmt.Sprintf("From %s %s\r\n", envelopeFrom, envelopeDate)))
 	if err != nil {
 		return err
 	}
 
 	// fromEncoded
 	_, err = m.Write(regexp.MustCompile(`(\n)(From )`).
-    ReplaceAll(rfc822, []byte("$1>$2")))
+		ReplaceAll(rfc822, []byte("$1>$2")))
 	if err != nil {
 		return err
 	}
