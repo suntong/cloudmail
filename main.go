@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/suntong/go-imap"
@@ -12,9 +13,18 @@ import (
 	"time"
 )
 
+////////////////////////////////////////////////////////////////////////////
+// Constant and data type/structure definitions
+
+////////////////////////////////////////////////////////////////////////////
+// Global variables definitions
+
 var dumpProtocol *bool = flag.Bool("dumpprotocol", false, "dump imap stream")
 var username string
 var password string
+
+////////////////////////////////////////////////////////////////////////////
+// Function definitions
 
 func check(err error) {
 	if err != nil {
@@ -130,7 +140,10 @@ L:
 		r := <-ch
 		switch r := r.(type) {
 		case *imap.ResponseFetch:
-			mbox.writeMessage(r.Rfc822)
+			if err = mbox.writeMessage(r.Rfc822, messageFilter); err != nil {
+				ui.log("message ignored: %v\n", err)
+			}
+
 			i++
 			ui.progress(i, total, "fetching messages")
 		case *imap.ResponseStatus:
@@ -139,6 +152,15 @@ L:
 		}
 	}
 	readExtra(im)
+}
+
+func messageFilter(rfc822 []byte, envelopeDate time.Time) error {
+	validFrom := time.Now()
+	validFrom = validFrom.AddDate(0, -3, 0)
+	if envelopeDate.Before(validFrom) {
+		return errors.New("older than picked date")
+	}
+	return nil
 }
 
 func (ui *UI) reportOnStatus() {
@@ -227,6 +249,9 @@ func usage() {
 	fmt.Printf("  fetch user pass 	download mailbox\n")
 	os.Exit(0)
 }
+
+////////////////////////////////////////////////////////////////////////////
+// Main
 
 func main() {
 	log.SetFlags(log.Ltime | log.Lshortfile)
