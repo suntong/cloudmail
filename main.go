@@ -20,8 +20,6 @@ import (
 // Global variables definitions
 
 var dumpProtocol *bool = flag.Bool("dumpprotocol", false, "dump imap stream")
-var username string
-var password string
 
 ////////////////////////////////////////////////////////////////////////////
 // Function definitions
@@ -51,10 +49,16 @@ func (ui *UI) progress(cur, total int, format string, args ...interface{}) {
 	ui.statusChan <- message
 }
 
-func loadAuth(path string) (string, string) {
+func loadAuth(path string) (string, string, string) {
 	f, err := os.Open(path)
 	check(err)
 	r := bufio.NewReader(f)
+
+	imap, isPrefix, err := r.ReadLine()
+	check(err)
+	if isPrefix {
+		panic("prefix")
+	}
 
 	user, isPrefix, err := r.ReadLine()
 	check(err)
@@ -68,7 +72,7 @@ func loadAuth(path string) (string, string) {
 		panic("prefix")
 	}
 
-	return string(user), string(pass)
+	return string(imap), string(user), string(pass)
 }
 
 func readExtra(im *imap.IMAP) {
@@ -83,12 +87,10 @@ func readExtra(im *imap.IMAP) {
 }
 
 func (ui *UI) connect(useNetmon bool) *imap.IMAP {
-	//user, pass := loadAuth("auth")
-	user := username
-	pass := password
+	imapAddr, user, pass := loadAuth("auth")
 
 	ui.log("connecting...")
-	conn, err := tls.Dial("tcp", "imap.gmail.com:993", nil)
+	conn, err := tls.Dial("tcp", imapAddr, nil)
 	check(err)
 
 	var r io.Reader = conn
@@ -245,8 +247,8 @@ func (ui *UI) runList() {
 func usage() {
 	fmt.Printf("usage: %s command\n", os.Args[0])
 	fmt.Printf("commands are:\n")
-	fmt.Printf("  list user pass 	list mailboxes\n")
-	fmt.Printf("  fetch user pass 	download mailbox\n")
+	fmt.Printf("  list    list mailboxes\n")
+	fmt.Printf("  fetch  	download mailbox\n")
 	os.Exit(0)
 }
 
@@ -258,13 +260,11 @@ func main() {
 	flag.Parse()
 
 	args := flag.Args()
-	if len(args) < 3 {
+	if len(args) < 1 {
 		usage()
 	}
 	mode := args[0]
-	username = args[1]
-	password = args[2]
-	args = args[3:]
+	args = args[1:]
 
 	ui := new(UI)
 
