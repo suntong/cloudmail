@@ -6,11 +6,15 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/suntong/go-imap"
 	"io"
 	"log"
 	"os"
 	"time"
+)
+
+import (
+	"github.com/suntong/go-imap"
+	"github.com/voxelbrain/goptions"
 )
 
 ////////////////////////////////////////////////////////////////////////////
@@ -142,10 +146,10 @@ L:
 		r := <-ch
 		switch r := r.(type) {
 		case *imap.ResponseFetch:
-			if err = mbox.writeMessage(r.Rfc822, messageFilter); err != nil {
-				ui.log("message ignored: %v\n", err)
+			if err = mbox.writeMessage(r.Rfc822, messageFilter); err != nil &&
+				VERBOSITY > 0 {
+				ui.log("message ignored: %v", err)
 			}
-
 			i++
 			ui.progress(i, total, "fetching messages")
 		case *imap.ResponseStatus:
@@ -244,41 +248,65 @@ func (ui *UI) runList() {
 	ui.reportOnStatus()
 }
 
-func usage() {
-	fmt.Printf("usage: %s command\n", os.Args[0])
-	fmt.Printf("commands are:\n")
-	fmt.Printf("  list    list mailboxes\n")
-	fmt.Printf("  fetch  	download mailbox\n")
-	os.Exit(0)
-}
-
 ////////////////////////////////////////////////////////////////////////////
 // Main
 
+type Options struct {
+	Verbosity []bool        `goptions:"-v, --verbose, description='Be verbose'"`
+	Help      goptions.Help `goptions:"-h, --help, description='Show this help\n\nSub-commands (Verbs):\n\tlist\t\tList mailboxes\n\tfetch\t\tDownload mailbox'"`
+
+	goptions.Verbs
+
+	List struct{} `goptions:"list"`
+
+	Fetch struct {
+		Folder string `goptions:"-f, --folder, description='mail folder to fetch', obligatory"`
+	} `goptions:"fetch"`
+}
+
+var options = Options{ // Default values goes here
+}
+
+type Command func(Options) error
+
+var commands = map[goptions.Verbs]Command{
+	"list":  listCmd,
+	"fetch": fetchCmd,
+}
+
+var (
+	VERBOSITY = 0
+)
+
 func main() {
 	log.SetFlags(log.Ltime | log.Lshortfile)
-	flag.Parse()
 
-	args := flag.Args()
-	if len(args) < 1 {
-		usage()
+	goptions.ParseAndFail(&options)
+	//fmt.Printf("] %#v\r\n", options)
+
+	if len(options.Verbs) == 0 {
+		goptions.PrintHelp()
+		os.Exit(2)
 	}
-	mode := args[0]
-	args = args[1:]
 
+	VERBOSITY = len(options.Verbosity)
+
+	if cmd, found := commands[options.Verbs]; found {
+		err := cmd(options)
+		check(err)
+	}
+
+}
+
+func listCmd(options Options) error {
 	ui := new(UI)
+	ui.runList()
+	println("done")
+	return nil
+}
 
-	switch mode {
-	case "list":
-		ui.runList()
-		println("done")
-	case "fetch":
-		if len(args) < 1 {
-			fmt.Printf("must specify mailbox to fetch\n")
-			os.Exit(1)
-		}
-		ui.runFetch(args[0])
-	default:
-		usage()
-	}
+func fetchCmd(options Options) error {
+	ui := new(UI)
+	ui.runFetch(options.Fetch.Folder)
+	return nil
 }
