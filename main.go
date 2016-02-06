@@ -23,7 +23,11 @@ import (
 ////////////////////////////////////////////////////////////////////////////
 // Global variables definitions
 
-var dumpProtocol *bool = flag.Bool("dumpprotocol", false, "dump imap stream")
+var (
+	dumpProtocol      *bool = flag.Bool("dumpprotocol", false, "dump imap stream")
+	messageFilterFunc       = validation(emptyFilter)
+	validFrom         time.Time
+)
 
 ////////////////////////////////////////////////////////////////////////////
 // Function definitions
@@ -161,8 +165,6 @@ L:
 }
 
 func messageFilter(rfc822 []byte, envelopeDate time.Time) error {
-	validFrom := time.Now()
-	validFrom = validFrom.AddDate(0, -3, 0)
 	if envelopeDate.Before(validFrom) {
 		return errors.New("older than picked date")
 	}
@@ -260,7 +262,10 @@ type Options struct {
 	List struct{} `goptions:"list"`
 
 	Fetch struct {
-		Folder string `goptions:"-f, --folder, description='mail folder to fetch', obligatory"`
+		Folder      string `goptions:"-f, --folder, description='Mail folder to fetch', obligatory"`
+		WithinYear  int    `goptions:"--wy, description='Within years, only to fetch mails within this number of years'"`
+		WithinMonth int    `goptions:"--wm, description='Within months, ditto for months'"`
+		WithinDay   int    `goptions:"--wd, description='Within days, ditto for days'"`
 	} `goptions:"fetch"`
 }
 
@@ -307,6 +312,16 @@ func listCmd(options Options) error {
 
 func fetchCmd(options Options) error {
 	ui := new(UI)
+
+	if options.Fetch.WithinYear+options.Fetch.WithinMonth+
+		options.Fetch.WithinDay > 0 {
+		messageFilterFunc = validation(messageFilter)
+		validFrom = time.Now()
+		validFrom = validFrom.AddDate(-options.Fetch.WithinYear,
+			-options.Fetch.WithinMonth, -options.Fetch.WithinDay)
+
+	}
+
 	ui.runFetch(options.Fetch.Folder)
 	return nil
 }

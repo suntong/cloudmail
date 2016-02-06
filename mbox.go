@@ -16,10 +16,16 @@ type mbox struct {
 	io.Writer
 }
 
+// Message filter call-back function type: validation
 type validation func([]byte, time.Time) error
 
 ////////////////////////////////////////////////////////////////////////////
 // Function definitions
+
+// emptyFilter implements validation, accepting every mail message
+func emptyFilter(rfc822 []byte, envelopeDate time.Time) error {
+	return nil
+}
 
 func newMbox(w io.Writer) *mbox {
 	return &mbox{w}
