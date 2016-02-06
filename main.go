@@ -24,9 +24,7 @@ import (
 // Global variables definitions
 
 var (
-	dumpProtocol      *bool = flag.Bool("dumpprotocol", false, "dump imap stream")
-	messageFilterFunc       = validation(emptyFilter)
-	validFrom         time.Time
+	dumpProtocol *bool = flag.Bool("dumpprotocol", false, "dump imap stream")
 )
 
 ////////////////////////////////////////////////////////////////////////////
@@ -163,6 +161,11 @@ L:
 	}
 	readExtra(im)
 }
+
+var (
+	messageFilterFunc = validation(emptyFilter)
+	validFrom         time.Time
+)
 
 func messageFilter(rfc822 []byte, envelopeDate time.Time) error {
 	if envelopeDate.Before(validFrom) {
@@ -319,7 +322,6 @@ func fetchCmd(options Options) error {
 		validFrom = time.Now()
 		validFrom = validFrom.AddDate(-options.Fetch.WithinYear,
 			-options.Fetch.WithinMonth, -options.Fetch.WithinDay)
-
 	}
 
 	ui.runFetch(options.Fetch.Folder)
