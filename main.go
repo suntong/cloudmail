@@ -15,6 +15,7 @@ import (
 import (
 	"github.com/suntong/go-imap"
 	"github.com/voxelbrain/goptions"
+	"gopkg.in/yaml.v2"
 )
 
 ////////////////////////////////////////////////////////////////////////////
@@ -162,18 +163,6 @@ L:
 	readExtra(im)
 }
 
-var (
-	messageFilterFunc = validation(emptyFilter)
-	validFrom         time.Time
-)
-
-func messageFilter(rfc822 []byte, envelopeDate time.Time) error {
-	if envelopeDate.Before(validFrom) {
-		return errors.New("older than picked date")
-	}
-	return nil
-}
-
 func (ui *UI) reportOnStatus() {
 
 	ticker := time.NewTicker(1000 * 1000 * 1000)
@@ -306,6 +295,9 @@ func main() {
 
 }
 
+////////////////////////////////////////////////////////////////////////////
+// Dispatch function definitions
+
 func listCmd(options Options) error {
 	ui := new(UI)
 	ui.runList()
@@ -325,5 +317,20 @@ func fetchCmd(options Options) error {
 	}
 
 	ui.runFetch(options.Fetch.Folder)
+	return nil
+}
+
+////////////////////////////////////////////////////////////////////////////
+// message filtering
+
+var (
+	messageFilterFunc = validation(emptyFilter)
+	validFrom         time.Time
+)
+
+func messageFilter(rfc822 []byte, envelopeDate time.Time) error {
+	if envelopeDate.Before(validFrom) {
+		return errors.New("older than picked date")
+	}
 	return nil
 }
