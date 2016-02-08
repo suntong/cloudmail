@@ -9,6 +9,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"regexp"
+	"sort"
 	"time"
 )
 
@@ -150,7 +152,7 @@ L:
 		switch r := r.(type) {
 		case *imap.ResponseFetch:
 			if err = mbox.writeMessage(r.Rfc822, messageFilter); err != nil &&
-				VERBOSITY > 0 {
+				VERBOSITY > 1 {
 				ui.log("message ignored: %v", err)
 			}
 			i++
@@ -255,6 +257,7 @@ type Options struct {
 
 	Fetch struct {
 		Folder      string `goptions:"-f, --folder, description='Mail folder to fetch', obligatory"`
+		TrackId     bool   `goptions:"-t, --trackid, description='Track message Id'"`
 		WithinYear  int    `goptions:"--wy, description='Within years, only to fetch mails within this number of years'"`
 		WithinMonth int    `goptions:"--wm, description='Within months, ditto for months'"`
 		WithinDay   int    `goptions:"--wd, description='Within days, ditto for days'"`
@@ -288,6 +291,8 @@ func main() {
 
 	VERBOSITY = len(options.Verbosity)
 
+	messageIds = make(map[string]bool)
+	messageFetchMode = options.Verbs == "fetch"
 	if cmd, found := commands[options.Verbs]; found {
 		err := cmd(options)
 		check(err)
@@ -317,20 +322,81 @@ func fetchCmd(options Options) error {
 	}
 
 	ui.runFetch(options.Fetch.Folder)
+	if options.Fetch.TrackId {
+		msgIdSave()
+	}
 	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////////
 // message filtering
 
+type MsgIds struct {
+	Msg []string
+}
+
 var (
 	messageFilterFunc = validation(emptyFilter)
+	messageIds        map[string]bool
+	messageFetchMode  bool
 	validFrom         time.Time
 )
 
 func messageFilter(rfc822 []byte, envelopeDate time.Time) error {
+	err := filterEnvelopeDate(rfc822, envelopeDate)
+	if err != nil {
+		return err
+	}
+	return filterMsgId(rfc822, envelopeDate)
+}
+
+func filterEnvelopeDate(rfc822 []byte, envelopeDate time.Time) error {
 	if envelopeDate.Before(validFrom) {
 		return errors.New("older than picked date")
 	}
 	return nil
+}
+
+func filterMsgId(rfc822 []byte, envelopeDate time.Time) error {
+	r := regexp.MustCompile(`(?i)\nMessage-ID: *<(.*?)> *\r*\n`).FindSubmatch(rfc822)
+	if len(r) == 0 {
+		panic("Internal error: Message-ID not found\n" + string(rfc822))
+		os.Exit(1)
+	}
+	// fmt.Printf("\nr: %+v\n", r)
+	msgId := string(r[1])
+	if VERBOSITY > 0 {
+		fmt.Printf("\nmsgId: %+v\n", msgId)
+	}
+
+	// if not in message fetching mode, check for existing MsgId first
+	if !messageFetchMode && messageIds[msgId] {
+		return errors.New("existing message Id")
+	}
+
+	messageIds[msgId] = true
+	return nil
+}
+
+// msgIdSave will save out the global messageIds in sorted order
+func msgIdSave() {
+	// http://blog.golang.org/go-maps-in-action
+	msgIds := MsgIds{}
+	for k := range messageIds {
+		msgIds.Msg = append(msgIds.Msg, k)
+	}
+	sort.Strings(msgIds.Msg)
+
+	y, err := yaml.Marshal(&msgIds)
+	check(err)
+
+	// open output file
+	f, err := os.Create(options.Fetch.Folder + ".yaml")
+	check(err)
+	// close fo on exit and check for its returned error
+	defer func() {
+		check(f.Close())
+	}()
+
+	fmt.Fprintf(f, "%s\n", string(y))
 }
