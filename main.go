@@ -247,21 +247,24 @@ func (ui *UI) runList() {
 ////////////////////////////////////////////////////////////////////////////
 // Main
 
+type Fetch struct {
+	Folder      string `goptions:"-f, --folder, description='Mail folder to fetch', obligatory"`
+	TrackId     bool   `goptions:"-t, --trackid, description='Track message Id'"`
+	WithinYear  int    `goptions:"--wy, description='Within years, only to fetch mails within this number of years'"`
+	WithinMonth int    `goptions:"--wm, description='Within months, ditto for months'"`
+	WithinDay   int    `goptions:"--wd, description='Within days, ditto for days'"`
+}
+
 type Options struct {
 	Verbosity []bool        `goptions:"-v, --verbose, description='Be verbose'"`
-	Help      goptions.Help `goptions:"-h, --help, description='Show this help\n\nSub-commands (Verbs):\n\tlist\t\tList mailboxes\n\tfetch\t\tDownload mailbox'"`
+	Help      goptions.Help `goptions:"-h, --help, description='Show this help\n\nSub-commands (Verbs):\n\tlist\t\tList mailboxes\n\tfetch\t\tDownload mailbox\n\tsync\t\tSync cloud mail folder to existing mailbox file'"`
 
 	goptions.Verbs
 
 	List struct{} `goptions:"list"`
 
-	Fetch struct {
-		Folder      string `goptions:"-f, --folder, description='Mail folder to fetch', obligatory"`
-		TrackId     bool   `goptions:"-t, --trackid, description='Track message Id'"`
-		WithinYear  int    `goptions:"--wy, description='Within years, only to fetch mails within this number of years'"`
-		WithinMonth int    `goptions:"--wm, description='Within months, ditto for months'"`
-		WithinDay   int    `goptions:"--wd, description='Within days, ditto for days'"`
-	} `goptions:"fetch"`
+	Fetch `goptions:"fetch"` // fields embedding
+	Sync  Fetch              `goptions:"sync"`
 }
 
 var options = Options{ // Default values goes here
