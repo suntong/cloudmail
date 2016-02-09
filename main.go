@@ -134,10 +134,10 @@ func (ui *UI) fetch(im *imap.IMAP, mailbox string) {
 	ui.log("mailbox status: %+v", examine)
 	readExtra(im)
 
-	fileMode := os.O_CREATE
+	fileMode := os.O_CREATE | os.O_TRUNC | os.O_WRONLY
 	// if not in message fetching mode, append to the mbox file
 	if !messageFetchMode {
-		fileMode = os.O_RDWR | os.O_APPEND
+		fileMode = os.O_APPEND | os.O_WRONLY
 	}
 
 	f, err := os.OpenFile(mailbox+".mbox", fileMode, 0660)
