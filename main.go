@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
@@ -133,7 +134,13 @@ func (ui *UI) fetch(im *imap.IMAP, mailbox string) {
 	ui.log("mailbox status: %+v", examine)
 	readExtra(im)
 
-	f, err := os.Create(mailbox + ".mbox")
+	fileMode := os.O_CREATE
+	// if not in message fetching mode, append to the mbox file
+	if !messageFetchMode {
+		fileMode = os.O_RDWR | os.O_APPEND
+	}
+
+	f, err := os.OpenFile(mailbox+".mbox", fileMode, 0660)
 	check(err)
 	mbox := newMbox(f)
 
@@ -275,6 +282,7 @@ type Command func(Options) error
 var commands = map[goptions.Verbs]Command{
 	"list":  listCmd,
 	"fetch": fetchCmd,
+	"sync":  syncCmd,
 }
 
 var (
@@ -326,7 +334,26 @@ func fetchCmd(options Options) error {
 
 	ui.runFetch(options.Fetch.Folder)
 	if options.Fetch.TrackId {
-		msgIdSave()
+		msgIdSave(options.Fetch.Folder)
+	}
+	return nil
+}
+
+func syncCmd(options Options) error {
+	ui := new(UI)
+
+	if options.Sync.WithinYear+options.Sync.WithinMonth+
+		options.Sync.WithinDay > 0 {
+		messageFilterFunc = validation(messageFilter)
+		validFrom = time.Now()
+		validFrom = validFrom.AddDate(-options.Sync.WithinYear,
+			-options.Sync.WithinMonth, -options.Sync.WithinDay)
+	}
+
+	msgIdRead(options.Sync.Folder)
+	ui.runFetch(options.Sync.Folder)
+	if options.Sync.TrackId {
+		msgIdSave(options.Sync.Folder)
 	}
 	return nil
 }
@@ -382,7 +409,7 @@ func filterMsgId(rfc822 []byte, envelopeDate time.Time) error {
 }
 
 // msgIdSave will save out the global messageIds in sorted order
-func msgIdSave() {
+func msgIdSave(mailbox string) {
 	// http://blog.golang.org/go-maps-in-action
 	msgIds := MsgIds{}
 	for k := range messageIds {
@@ -394,7 +421,7 @@ func msgIdSave() {
 	check(err)
 
 	// open output file
-	f, err := os.Create(options.Fetch.Folder + ".yaml")
+	f, err := os.Create(mailbox + ".yaml")
 	check(err)
 	// close fo on exit and check for its returned error
 	defer func() {
@@ -402,4 +429,24 @@ func msgIdSave() {
 	}()
 
 	fmt.Fprintf(f, "%s\n", string(y))
+}
+
+// msgIdRead will read the saved the global messageIds back
+func msgIdRead(mailbox string) {
+
+	filename := mailbox + ".yaml"
+	source, err := ioutil.ReadFile(filename)
+	check(err)
+
+	msgIds := MsgIds{}
+	err = yaml.Unmarshal(source, &msgIds)
+	check(err)
+
+	for _, k := range msgIds.Msg {
+		messageIds[k] = true
+	}
+
+	if VERBOSITY > 0 {
+		fmt.Printf("MsgIds:\n %v\n", msgIds)
+	}
 }
