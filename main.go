@@ -61,7 +61,12 @@ func (ui *UI) progress(cur, total int, format string, args ...interface{}) {
 
 func loadAuth(path string) (string, string, string) {
 	f, err := os.Open(path)
-	check(err)
+	if err != nil {
+		fmt.Printf("Error %v\nMake sure the application is properly configured.\n",
+			err)
+		os.Exit(1)
+	}
+
 	r := bufio.NewReader(f)
 
 	imap, isPrefix, err := r.ReadLine()
