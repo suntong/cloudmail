@@ -69,6 +69,11 @@ userid
 passwd
 ```
 
+## Insight
+
+- The downloaded mail box file will be named using the provided Gmail labels (e.g., `my-label`) with the `.mbox` extension (e.g., `my-label.mbox`). To view it, use `mailx -f my-label.mbox`.
+- If message-tracking is enabled, a message-tracking file, named using the provided Gmail labels (e.g., `my-label`) with a `.yaml` extension (e.g., `my-label.yaml`), will be created/updated as well. It contains all the Message Ids from the downloaded messages. One Id for each message in sorted order. The Message Id is part of the RFC822 standard from mail header that uniquely identify an email message. They make re-downloading or even syncing between different cloud mail accounts possible. Thus, it is important that, once you've enabled message-tracking, you should always enable it in subsequent requests.
+
 ## Note
 
 To access Gmail via IMAP, you need to [allow less secure apps to access your account](https://support.google.com/accounts/answer/6010255).
