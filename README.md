@@ -73,6 +73,17 @@ passwd
 
 - The downloaded mail box file will be named using the provided Gmail label (e.g., `my-label`) with the `.mbox` extension (e.g., `my-label.mbox`). To view it, use `mailx -f my-label.mbox`.
 - If message-tracking is enabled, a message-tracking file, named using the provided Gmail label (e.g., `my-label`) with a `.yaml` extension (e.g., `my-label.yaml`), will be created/updated as well. It contains all the Message Ids from the downloaded messages. One Id for each message in sorted order. The Message Id is part of the RFC822 standard from mail header that uniquely identify an email message. They make re-downloading or even syncing between different cloud mail accounts possible. Thus, it is important that, once you've enabled message-tracking, you should always enable it in subsequent requests.
+- When syncing after the initial fetching,
+  * The newly downloaded messages will be appended to the `.mbox` file, thus the off-line mail storage will have the exact same copy of the online version.
+  * However, if for the purpose of syncing messages between different cloud mail accounts, then we don't want the old messages to get in the way. I.e., we want the final `.mbox` file contains nothing but the newly downloaded messages, so that when sending each message from within the mail box file as separated email to another (cloud) mail account using `formail`, the old messages which have already been sent, won't be sent again.  
+  To do that, execute the following steps so that the the final `.mbox` file contains nothing but the newly downloaded messages:
+    0. Make a copy of the off-line mail storage, both the `.mbox` and the `.yaml` file
+    0. Empty/truncate the `.mbox` file (e.g., "`> my-label.mbox`")
+    0. Start syncing after the above step (e.g., "`cloudmail sync -f my-label -t ...`")
+    0. Optionally,
+	   + Send out the newly downloaded messages with `formail`
+	   + Restore the off-line mail storage
+	   + Redo the syncing again, so that the off-line mail storage will have the exact same copy of the online version. You actually don't need to redo the syncing again, if you can concatenate the new `.mbox` file to the end of the old backed up `.mbox` file. You can do it if you know what you are doing, but I'll just simply say redo the syncing again.
 
 ## Note
 
