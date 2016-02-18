@@ -1,4 +1,8 @@
-## Intro
+## cloudmail
+
+[![Codeship Status for suntong/cloudmail](https://codeship.com/projects/13622290-b80d-0133-2a58-6ef29f71ac4a/status?branch=master)](https://codeship.com/projects/134998)
+[![Go Report Card](https://goreportcard.com/badge/github.com/suntong/cloudmail)](https://goreportcard.com/report/github.com/suntong/cloudmail)
+[![MIT License](http://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Here's a little IMAP-client program in Go.
 
